@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="no" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise 120 Skills & Grafana Engine</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for Grafana style metrics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        mint: {
+                            50: '#f0fdf4',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            dark: '#1e2229',
+                            panel: '#282c34',
+                            accent: '#8abeb7',
+                            minty: '#87de87'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #12151c;
+            color: #d8dee9;
+        }
+        /* Linux Mint Cinnamon Mint-Y & macOS Glassmorphism blend */
+        .glass-panel {
+            background: rgba(30, 34, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .glass-card {
+            background: rgba(40, 44, 52, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #12151c;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b4252;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4c566a;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.02); }
+        }
+        .animate-glow {
+            animation: pulse-glow 3s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="h-full w-full overflow-x-hidden flex flex-col bg-[#12151c] text-[#d8dee9] selection:bg-emerald-500 selection:text-white">
+
+    <!-- Top Window Bar (Mint-Y / macOS hybrid header) -->
+    <header class="w-full glass-panel sticky top-0 z-50 px-4 py-3 flex items-center justify-between border-b border-white/10 shrink-0">
+        <div class="flex items-center space-x-3">
+            <!-- Window Control Buttons (Mint-Y style right/left mix) -->
+            <div class="flex items-center space-x-2 mr-2">
+                <button class="w-3.5 h-3.5 rounded-full bg-red-500 hover:opacity-80 transition cursor-pointer" title="Lukk"></button>
+                <button class="w-3.5 h-3.5 rounded-full bg-yellow-500 hover:opacity-80 transition cursor-pointer" title="Minimer"></button>
+                <button class="w-3.5 h-3.5 rounded-full bg-emerald-500 hover:opacity-80 transition cursor-pointer" title="Maksimer"></button>
+            </div>
+            <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 rounded-lg bg-emerald-600/30 flex items-center justify-center border border-emerald-500/40 text-emerald-400">
+                    <i class="fa-solid fa-microchip"></i>
+                </div>
+                <div>
+                    <h1 class="text-sm font-bold tracking-wide text-white flex items-center gap-2">
+                        Nexus 120-Skills & Grafana Core
+                        <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">v4.8 LTS</span>
+                    </h1>
+                    <p class="text-[11px] text-gray-400">Agnostic Data & Synchronized ML Dashboard Engine</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desktop Navigation & Mobile Toggle -->
+        <div class="flex items-center space-x-4">
+            <nav class="hidden md:flex items-center space-x-1 bg-black/20 p-1 rounded-lg border border-white/5">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="px-4 py-1.5 rounded-md text-xs font-medium transition bg-emerald-600 text-white shadow-lg shadow-emerald-900/30">
+                    <i class="fa-solid fa-chart-line mr-1.5"></i> Grafana Dashboard
+                </button>
+                <button onclick="switchTab('skills')" id="nav-skills" class="px-4 py-1.5 rounded-md text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition">
+                    <i class="fa-solid fa-list-check mr-1.5"></i> 120 Ferdigheter
+                </button>
+                <button onclick="switchTab('agnostic')" id="nav-agnostic" class="px-4 py-1.5 rounded-md text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition">
+                    <i class="fa-solid fa-database mr-1.5"></i> Agnostisk DB
+                </button>
+            </nav>
+
+            <!-- Status Indicator -->
+            <div class="hidden lg:flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-950/50 border border-emerald-500/30 text-emerald-400 text-xs">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span id="sync-status">Sanntids Sync: Aktiv</span>
+            </div>
+
+            <!-- Mobile Menu Toggle Button -->
+            <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-lg bg-white/5 text-gray-300 hover:text-white focus:outline-none">
+                <i class="fa-solid fa-bars text-lg"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Mobile Navigation Drawer -->
+    <div id="mobile-menu" class="hidden md:hidden glass-panel fixed inset-x-0 top-[57px] z-40 p-4 border-b border-white/10 space-y-2 bg-[#1e2229]/95">
+        <button onclick="switchTab('dashboard'); toggleMobileMenu();" class="w-full text-left px-4 py-3 rounded-xl text-sm font-medium bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-3">
+            <i class="fa-solid fa-chart-line w-5"></i> Grafana Dashboard
+        </button>
+        <button onclick="switchTab('skills'); toggleMobileMenu();" class="w-full text-left px-4 py-3 rounded-xl text-sm font-medium text-gray-300 hover:bg-white/5 flex items-center gap-3">
+            <i class="fa-solid fa-list-check w-5"></i> 120 Ferdigheter
+        </button>
+        <button onclick="switchTab('agnostic'); toggleMobileMenu();" class="w-full text-left px-4 py-3 rounded-xl text-sm font-medium text-gray-300 hover:bg-white/5 flex items-center gap-3">
+            <i class="fa-solid fa-database w-5"></i> Agnostisk DB
+        </button>
+    </div>
+
+    <!-- Main Content Wrapper -->
+    <main class="flex-1 w-full overflow-y-auto p-4 md:p-6 space-y-6 max-w-[1600px] mx-auto">
+
+        <!-- TAB 1: GRAFANA DASHBOARD -->
+        <section id="tab-dashboard" class="space-y-6">
+            <!-- Dashboard Controls / Filters Bar -->
+            <div class="glass-card p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <span class="text-xs uppercase tracking-wider text-emerald-400 font-semibold px-2.5 py-1 rounded bg-emerald-500/10 border border-emerald-500/20">
+                        <i class="fa-solid fa-wave-square mr-1"></i> Live Stream
+                    </span>
+                    <h2 class="text-base font-bold text-white">System Metrikker & Synkronisert Telemetri</h2>
+                </div>
+                <div class="flex items-center flex-wrap gap-2">
+                    <button onclick="triggerSyncPulse()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition shadow-lg shadow-emerald-900/20 flex items-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-rotate"></i> Synkroniser Nå
+                    </button>
+                    <button onclick="toggleLiveStream()" id="stream-toggle-btn" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-gray-200 text-xs font-medium transition border border-white/10 flex items-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-pause" id="stream-icon"></i> <span id="stream-text">Pause Strøm</span>
+                    </button>
+                    <select id="time-range" onchange="updateChartTimeRange(this.value)" class="bg-[#12151c] text-xs text-gray-300 border border-white/10 rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500">
+                        <option value="5">Siste 5 min</option>
+                        <option value="15" selected>Siste 15 min</option>
+                        <option value="60">Siste 1 time</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Top Metric Stat Cards (Grafana Single Stat Panels) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Stat 1 -->
+                <div class="glass-card p-4 rounded-2xl relative overflow-hidden group hover:border-emerald-500/40 transition">
+                    <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition"></div>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs text-gray-400 font-medium">Aktive Ferdigheter</p>
+                            <h3 class="text-2xl font-bold text-white mt-1 font-mono">120 / 120</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 border border-emerald-500/30">
+                            <i class="fa-solid fa-layer-group"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center text-xs text-emerald-400 gap-1 font-medium">
+                        <i class="fa-solid fa-arrow-trend-up"></i>
+                        <span>100% Synkronisert & Optimalisert</span>
+                    </div>
+                </div>
+
+                <!-- Stat 2 -->
+                <div class="glass-card p-4 rounded-2xl relative overflow-hidden group hover:border-cyan-500/40 transition">
+                    <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-cyan-500/10 rounded-full blur-xl group-hover:bg-cyan-500/20 transition"></div>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs text-gray-400 font-medium">ML Modell Akkuratid</p>
+                            <h3 class="text-2xl font-bold text-white mt-1 font-mono" id="stat-ml-acc">98.7%</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center text-cyan-400 border border-cyan-500/30">
+                            <i class="fa-solid fa-brain"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center text-xs text-cyan-400 gap-1 font-medium">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>Sanntids inferens aktiv</span>
+                    </div>
+                </div>
+
+                <!-- Stat 3 -->
+                <div class="glass-card p-4 rounded-2xl relative overflow-hidden group hover:border-indigo-500/40 transition">
+                    <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-indigo-500/10 rounded-full blur-xl group-hover:bg-indigo-500/20 transition"></div>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs text-gray-400 font-medium">Agnostic DB Latens</p>
+                            <h3 class="text-2xl font-bold text-white mt-1 font-mono" id="stat-db-latency">2.4 ms</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 border border-indigo-500/30">
+                            <i class="fa-solid fa-server"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center text-xs text-indigo-400 gap-1 font-medium">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>Multi-motor ruting stabil</span>
+                    </div>
+                </div>
+
+                <!-- Stat 4 -->
+                <div class="glass-card p-4 rounded-2xl relative overflow-hidden group hover:border-amber-500/40 transition">
+                    <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition"></div>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs text-gray-400 font-medium">Metrikk Throughput</p>
+                            <h3 class="text-2xl font-bold text-white mt-1 font-mono" id="stat-throughput">45.2k req/s</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-400 border border-amber-500/30">
+                            <i class="fa-solid fa-gauge-high"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center text-xs text-amber-400 gap-1 font-medium">
+                        <i class="fa-solid fa-arrow-trend-up"></i>
+                        <span>+12.4% fra forrige intervall</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grafana Main Charts Grid (Synchronized Panels) -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Chart Panel 1: Timeseries (2 cols wide) -->
+                <div class="glass-card p-5 rounded-2xl lg:col-span-2 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+                            <h3 class="text-sm font-bold text-white">Telemetri & Metrikk Strøm (Agnostic Data Flow)</h3>
+                        </div>
+                        <div class="flex items-center space-x-2 text-xs text-gray-400">
+                            <span class="px-2 py-0.5 rounded bg-white/5 border border-white/10 font-mono">PromQL / SQL Hybrid</span>
+                        </div>
+                    </div>
+                    <div class="relative w-full h-[280px]">
+                        <canvas id="metricsTimeseriesChart"></canvas>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-gray-400">
+                        <span>Oppdateringsfrekvens: 1.0s</span>
+                        <span class="text-emerald-400 font-mono" id="live-timestamp">Sist synkronisert: Nå</span>
+                    </div>
+                </div>
+
+                <!-- Chart Panel 2: Radar / Category Distribution (1 col wide) -->
+                <div class="glass-card p-5 rounded-2xl flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 rounded-full bg-cyan-500"></div>
+                            <h3 class="text-sm font-bold text-white">Ferdighet-Kategori Fordeling</h3>
+                        </div>
+                    </div>
+                    <div class="relative w-full h-[260px] flex items-center justify-center">
+                        <canvas id="skillsRadarChart"></canvas>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-white/5 text-xs text-gray-400 text-center">
+                        Total kapasitet: <span class="text-white font-bold">120 enheter fordelt på 4 domener</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Secondary Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Chart Panel 3: ML Model Performance Bar Chart -->
+                <div class="glass-card p-5 rounded-2xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 rounded-full bg-indigo-500"></div>
+                            <h3 class="text-sm font-bold text-white">Maskinlæring (ML) Modell Konvergens</h3>
+                        </div>
+                        <span class="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">Agnostic Kernels</span>
+                    </div>
+                    <div class="relative w-full h-[220px]">
+                        <canvas id="mlBarChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart Panel 4: Agnostic DB IOPS Distribution -->
+                <div class="glass-card p-5 rounded-2xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 rounded-full bg-amber-500"></div>
+                            <h3 class="text-sm font-bold text-white">Database IOPS & Transaksjonsflyt</h3>
+                        </div>
+                        <span class="text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">Postgres / DuckDB / Redis</span>
+                    </div>
+                    <div class="relative w-full h-[220px]">
+                        <canvas id="dbIopsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: 120 SKILLS MANAGEMENT -->
+        <section id="tab-skills" class="space-y-6 hidden">
+            <!-- Header & Search Toolbar -->
+            <div class="glass-card p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-emerald-400"></i> Komplett 120 Ferdigheter Register
+                    </h2>
+                    <p class="text-xs text-gray-400 mt-0.5">Utforsk, filtrer og administrer alle 120 maskinlærings-, database- og agnostiske ferdigheter.</p>
+                </div>
+                <div class="flex items-center flex-wrap gap-3 w-full md:w-auto">
+                    <!-- Search Input -->
+                    <div class="relative flex-1 md:w-64">
+                        <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                        <input type="text" id="skill-search" oninput="filterSkills()" placeholder="Søk i 120 ferdigheter..." class="w-full bg-[#12151c] text-xs text-white pl-9 pr-4 py-2 rounded-xl border border-white/10 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <!-- Category Filter -->
+                    <select id="skill-category-filter" onchange="filterSkills()" class="bg-[#12151c] text-xs text-gray-300 border border-white/10 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500">
+                        <option value="all">Alle Kategorier (120)</option>
+                        <option value="ml">Maskinlæring (ML) [30]</option>
+                        <option value="db">Database & Storage [30]</option>
+                        <option value="metrics">Metrikk & Observabilitet [30]</option>
+                        <option value="agnostic">Agnostic Data Core [30]</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Skills Grid Container (Populated via JS) -->
+            <div id="skills-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <!-- JavaScript vil dynamisk generere alle 120 ferdighetskort her -->
+            </div>
+        </section>
+
+        <!-- TAB 3: AGNOSTIC DATABASE FUNCTIONS -->
+        <section id="tab-agnostic" class="space-y-6 hidden">
+            <!-- Agnostic Engine Intro -->
+            <div class="glass-card p-6 rounded-2xl relative overflow-hidden">
+                <div class="absolute right-0 top-0 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="max-w-2xl">
+                    <span class="text-xs uppercase tracking-wider text-emerald-400 font-semibold px-2.5 py-1 rounded bg-emerald-500/10 border border-emerald-500/20">
+                        <i class="fa-solid fa-network-wired mr-1"></i> Universell Data-abstraksjon
+                    </span>
+                    <h2 class="text-xl font-bold text-white mt-3">Agnostiske Databasefunksjoner & Spørring</h2>
+                    <p class="text-xs text-gray-300 mt-2 leading-relaxed">
+                        Kjør universelle CRUD-operasjoner, transformer datasett på tvers av SQL (Postgres), NoSQL (MongoDB/Redis) og columnar format (DuckDB/Parquet) uten å endre applikasjonslogikk.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Console / Execution Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Query Console (2 cols) -->
+                <div class="glass-card p-5 rounded-2xl lg:col-span-2 flex flex-col justify-between space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <i class="fa-solid fa-terminal text-emerald-400"></i>
+                            <h3 class="text-sm font-bold text-white">Agnostisk Spørringskonsoll</h3>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <select id="db-dialect" class="bg-[#12151c] text-xs text-emerald-400 border border-emerald-500/30 rounded-lg px-2.5 py-1 focus:outline-none">
+                                <option value="universal">Agnostic Universal SQL</option>
+                                <option value="postgres">PostgreSQL 16 Engine</option>
+                                <option value="duckdb">DuckDB Analytical</option>
+                                <option value="redis">Redis In-Memory</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Code textarea -->
+                    <div class="relative">
+                        <textarea id="agnostic-query-input" rows="5" class="w-full bg-[#12151c] font-mono text-xs text-emerald-300 p-4 rounded-xl border border-white/10 focus:outline-none focus:border-emerald-500 resize-none">SELECT skill_name, category, confidence_score, telemetry_sync 
+FROM skills_registry 
+WHERE category = 'Machine Learning' 
+ORDER BY confidence_score DESC 
+LIMIT 10;</textarea>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2 text-xs text-gray-400">
+                            <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                            <span>Transaksjonssikkerhet: ACID / Distributed Sync</span>
+                        </div>
+                        <button onclick="executeAgnosticQuery()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition shadow-lg shadow-emerald-900/30 flex items-center gap-2 cursor-pointer">
+                            <i class="fa-solid fa-play"></i> Kjør Spørring
+                        </button>
+                    </div>
+
+                    <!-- Query Result Box -->
+                    <div class="mt-4 pt-4 border-t border-white/10">
+                        <p class="text-xs font-semibold text-gray-400 mb-2">Sanntids Resultatsett (JSON / Tabell):</p>
+                        <div class="bg-[#12151c] p-3 rounded-xl border border-white/10 max-h-48 overflow-y-auto">
+                            <pre id="query-result-output" class="font-mono text-[11px] text-emerald-400">Klar til å eksekvere agnostisk spørring...</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Database Operations Panel (1 col) -->
+                <div class="glass-card p-5 rounded-2xl flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center space-x-2 mb-4">
+                            <i class="fa-solid fa-gears text-cyan-400"></i>
+                            <h3 class="text-sm font-bold text-white">Database Vedlikehold</h3>
+                        </div>
+                        <div class="space-y-3">
+                            <button onclick="runDbAction('sync')" class="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition flex items-center justify-between group cursor-pointer">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                                        <i class="fa-solid fa-sync"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-xs font-bold text-white group-hover:text-emerald-400 transition">Full Schema Sync</h4>
+                                        <p class="text-[10px] text-gray-400">Synkroniser alle 120 noder</p>
+                                    </div>
+                                </div>
+                                <i class="fa-solid fa-chevron-right text-xs text-gray-500"></i>
+                            </button>
+
+                            <button onclick="runDbAction('vacuum')" class="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition flex items-center justify-between group cursor-pointer">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400">
+                                        <i class="fa-solid fa-broom"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-xs font-bold text-white group-hover:text-cyan-400 transition">Vacuum & Reindex</h4>
+                                        <p class="text-[10px] text-gray-400">Optimaliser B-Tree indekser</p>
+                                    </div>
+                                </div>
+                                <i class="fa-solid fa-chevron-right text-xs text-gray-500"></i>
+                            </button>
+
+                            <button onclick="runDbAction('backup')" class="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition flex items-center justify-between group cursor-pointer">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400">
+                                        <i class="fa-solid fa-cloud-arrow-down"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-xs font-bold text-white group-hover:text-indigo-400 transition">Snapshot Export</h4>
+                                        <p class="text-[10px] text-gray-400">Eksporter JSON / Parquet</p>
+                                    </div>
+                                </div>
+                                <i class="fa-solid fa-chevron-right text-xs text-gray-500"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Live Status Feed -->
+                    <div class="bg-[#12151c] p-3 rounded-xl border border-white/10">
+                        <div class="flex items-center justify-between text-[11px] text-gray-400 mb-1">
+                            <span>Agnostisk Status:</span>
+                            <span class="text-emerald-400 font-bold">ONLINE</span>
+                        </div>
+                        <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-emerald-500 h-full w-[94%] transition-all duration-500"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Custom Notification / Message Box (Replaces alert) -->
+    <div id="toast-notification" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="glass-panel px-4 py-3 rounded-2xl border border-emerald-500/40 shadow-2xl flex items-center space-x-3 bg-[#1e2229]/95">
+            <div class="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                <i class="fa-solid fa-bell" id="toast-icon"></i>
+            </div>
+            <div>
+                <h4 id="toast-title" class="text-xs font-bold text-white">System Melding</h4>
+                <p id="toast-desc" class="text-[11px] text-gray-300">Handling fullført uten feil.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Core -->
+    <script>
+        /* --- APPLICATION STATE & 120 SKILLS GENERATOR --- */
+        const categories = [
+            { id: 'ml', name: 'Maskinlæring (ML)', color: '#06b6d4', icon: 'fa-brain' },
+            { id: 'db', name: 'Database & Storage', color: '#6366f1', icon: 'fa-database' },
+            { id: 'metrics', name: 'Metrikk & Observabilitet', color: '#f59e0b', icon: 'fa-chart-pie' },
+            { id: 'agnostic', name: 'Agnostic Data Core', color: '#10b981', icon: 'fa-cubes' }
+        ];
+
+        let skills = [];
+        const skillPrefixes = {
+            ml: ['Deep Neural Networks', 'Transformer Attention', 'Reinforcement Learning', 'Gradient Boosting', 'Bayesian Inference', 'Computer Vision CNN', 'NLP Tokenization', 'Federated Learning', 'AutoML Pipeline', 'Latent Space Embedding', 'Generative Diffusion', 'Graph Neural Net', 'Model Quantization', 'Hyperparameter Tuning', 'Vector Search Engine', 'Prompt Engineering', 'K-Means Clustering', 'Support Vector Machines', 'Random Forest Ensemble', 'TimeSeries Forecasting', 'Active Learning', 'Zero-Shot Classification', 'Knowledge Distillation', 'Anomaly Detection', 'Contrastive Learning', 'Markov Decision Process', 'Principal Component Analysis', 'Ridge Regression', 'XGBoost Optimization', 'Neural Architecture Search'],
+            db: ['PostgreSQL Sharding', 'DuckDB Columnar', 'Redis In-Memory', 'MongoDB Document Store', 'Cassandra Wide-Column', 'Distributed ACID', 'B-Tree Indexing', 'Write-Ahead Logging', 'Connection Pooling', 'Query Optimization', 'CouchDB Replication', 'Neo4j Graph Queries', 'ClickHouse Analytics', 'TimescaleDB Partitioning', 'RocksDB LSM-Tree', 'Data Lakehouse Delta', 'SQLAlchemy ORM', 'Database Migration', 'Deadlock Resolution', 'Replication Lag', 'Snapshot Isolation', 'NoSQL Indexing', 'Multi-Master Sync', 'InMemory Caching', 'Data Deduplication', 'Row-Level Security', 'Storage Compaction', 'Distributed Transactions', 'Vector Embedding DB', 'Backup & Restore Engine'],
+            metrics: ['PromQL TimeSeries', 'Grafana Dashboarding', 'OpenTelemetry Tracing', 'Prometheus Scrape', 'Jaeger Distributed Trace', 'Datadog APM', 'ELK Stack Logging', 'CPU Utilization Metrics', 'Memory Leak Detector', 'Network IOPS Monitor', 'Latency Percentiles P99', 'Error Rate Alerting', 'SLA / SLO Tracking', 'Custom Metric Exporter', 'Log Aggregation', 'Realtime Telemetry', 'Health Check Probe', 'Throughput Analysis', 'Root Cause Analysis', 'Distributed Tracing', 'Heap Memory Profiling', 'Thread Pool Monitor', 'Disk I/O Latency', 'Packet Loss Tracker', 'Goroutine Profiler', 'Garbage Collection Stats', 'Queue Depth Monitor', 'Saturation Metrics', 'Traffic Ingress Rate', 'Anomaly Alert Engine'],
+            agnostic: ['Universal Data Abstraction', 'JSON / Parquet Converter', 'Protocol Buffers', 'GraphQL Gateway', 'REST API Router', 'gRPC Stream Engine', 'Multi-Cloud Sync', 'Schema Evolution', 'Cross-Platform Adapter', 'Event-Driven Bus', 'Kafka Message Broker', 'RabbitMQ Queue', 'Data Sanitization', 'Format Agnostic Parser', 'Middleware Orchestrator', 'Microservice Mesh', 'Docker Containerization', 'Kubernetes Operator', 'Serverless Worker', 'Cloudflare Workers', 'WebSockets Bi-Sync', 'Edge Computing Node', 'Declarative Config', 'Zero-Trust Gateway', 'State Machine Engine', 'Load Balancer Proxy', 'API Rate Limiter', 'Data Pipeline DAG', 'Idempotent Consumer', 'Universal Connector']
+        };
+
+        // Generate exactly 120 skills (30 per category)
+        function generate120Skills() {
+            let idCounter = 1;
+            categories.forEach(cat => {
+                const names = skillPrefixes[cat.id];
+                names.forEach((name, idx) => {
+                    skills.push({
+                        id: idCounter++,
+                        name: `${name} #${idx + 1}`,
+                        category: cat.id,
+                        categoryName: cat.name,
+                        color: cat.color,
+                        icon: cat.icon,
+                        level: Math.floor(Math.random() * 30) + 70, // 70-100%
+                        status: Math.random() > 0.1 ? 'Optimalisert' : 'Synkroniserer',
+                        latency: (Math.random() * 5 + 0.5).toFixed(1) + 'ms'
+                    });
+                });
+            });
+        }
+        generate120Skills();
+
+        // Render skills grid
+        function renderSkills(filteredSkills = skills) {
+            const grid = document.getElementById('skills-grid');
+            grid.innerHTML = '';
+            filteredSkills.forEach(skill => {
+                const card = document.createElement('div');
+                card.className = 'glass-card p-4 rounded-2xl flex flex-col justify-between hover:border-emerald-500/40 transition group';
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="w-8 h-8 rounded-xl flex items-center justify-center text-xs" style="background: ${skill.color}20; color: ${skill.color}; border: 1px solid ${skill.color}40;">
+                                <i class="fa-solid ${skill.icon}"></i>
+                            </span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-300 font-mono">ID #${skill.id}</span>
+                        </div>
+                        <h3 class="text-xs font-bold text-white group-hover:text-emerald-400 transition line-clamp-1">${skill.name}</h3>
+                        <p class="text-[11px] text-gray-400 mt-1">${skill.categoryName}</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-white/5">
+                        <div class="flex items-center justify-between text-[11px] text-gray-400 mb-1">
+                            <span>Kapasitet / Score:</span>
+                            <span class="text-white font-mono font-bold">${skill.level}%</span>
+                        </div>
+                        <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                            <div class="h-full rounded-full transition-all duration-500" style="width: ${skill.level}%; background-color: ${skill.color};"></div>
+                        </div>
+                        <div class="mt-2 flex items-center justify-between text-[10px] text-gray-500">
+                            <span>Latens: <strong class="text-gray-300">${skill.latency}</strong></span>
+                            <span class="text-emerald-400">${skill.status}</span>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function filterSkills() {
+            const query = document.getElementById('skill-search').value.toLowerCase();
+            const catFilter = document.getElementById('skill-category-filter').value;
+
+            const filtered = skills.filter(skill => {
+                const matchesQuery = skill.name.toLowerCase().includes(query) || skill.id.toString().includes(query);
+                const matchesCat = catFilter === 'all' || skill.category === catFilter;
+                return matchesQuery && matchesCat;
+            });
+            renderSkills(filtered);
+        }
+
+        /* --- TAB SWITCHING LOGIC --- */
+        function switchTab(tabId) {
+            ['dashboard', 'skills', 'agnostic'].forEach(t => {
+                const section = document.getElementById(`tab-${t}`);
+                const btn = document.getElementById(`nav-${t}`);
+                if (t === tabId) {
+                    section.classList.remove('hidden');
+                    if (btn) {
+                        btn.className = "px-4 py-1.5 rounded-md text-xs font-medium transition bg-emerald-600 text-white shadow-lg shadow-emerald-900/30";
+                    }
+                } else {
+                    section.classList.add('hidden');
+                    if (btn) {
+                        btn.className = "px-4 py-1.5 rounded-md text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition";
+                    }
+                }
+            });
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        /* --- GRAFANA CHARTS & LIVE STREAM ENGINE --- */
+        let timeseriesChart, radarChart, mlBarChart, dbIopsChart;
+        let isStreaming = true;
+        let streamInterval;
+
+        function initCharts() {
+            // 1. Timeseries Chart
+            const ctxTimeseries = document.getElementById('metricsTimeseriesChart').getContext('2d');
+            timeseriesChart = new Chart(ctxTimeseries, {
+                type: 'line',
+                data: {
+                    labels: ['10:00', '10:02', '10:04', '10:06', '10:08', '10:10', '10:12', '10:14'],
+                    datasets: [
+                        {
+                            label: 'Agnostic Data Throughput (req/s)',
+                            data: [1200, 1900, 2400, 2100, 3200, 2800, 3900, 4520],
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'ML Inference Load (%)',
+                            data: [65, 70, 85, 78, 92, 88, 95, 98],
+                            borderColor: '#06b6d4',
+                            backgroundColor: 'rgba(6, 182, 212, 0.05)',
+                            fill: true,
+                            tension: 0.4,
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#9ca3af', font: { size: 11, family: 'Inter' } } }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#9ca3af', font: { size: 10 } } },
+                        y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#9ca3af', font: { size: 10 } } }
+                    }
+                }
+            });
+
+            // 2. Radar Chart
+            const ctxRadar = document.getElementById('skillsRadarChart').getContext('2d');
+            radarChart = new Chart(ctxRadar, {
+                type: 'radar',
+                data: {
+                    labels: ['Maskinlæring', 'Database', 'Metrikk', 'Agnostic Data', 'Infrastruktur', 'Sikkerhet'],
+                    datasets: [{
+                        label: 'Ferdighet Dekning',
+                        data: [95, 90, 98, 92, 88, 94],
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        borderColor: '#10b981',
+                        pointBackgroundColor: '#10b981',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        r: {
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { display: false, max: 100 }
+                        }
+                    }
+                }
+            });
+
+            // 3. ML Bar Chart
+            const ctxMl = document.getElementById('mlBarChart').getContext('2d');
+            mlBarChart = new Chart(ctxMl, {
+                type: 'bar',
+                data: {
+                    labels: ['DNN', 'Transformer', 'Reinforcement', 'CNN', 'XGBoost', 'Diffusion'],
+                    datasets: [{
+                        label: 'Modell Akkuratid (%)',
+                        data: [98.2, 99.1, 95.4, 97.8, 96.5, 98.9],
+                        backgroundColor: '#6366f1',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 } } },
+                        y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#9ca3af', font: { size: 10 } }, min: 90, max: 100 }
+                    }
+                }
+            });
+
+            // 4. DB IOPS Chart
+            const ctxDb = document.getElementById('dbIopsChart').getContext('2d');
+            dbIopsChart = new Chart(ctxDb, {
+                type: 'line',
+                data: {
+                    labels: ['00s', '10s', '20s', '30s', '40s', '50s'],
+                    datasets: [{
+                        label: 'IOPS (k)',
+                        data: [12, 18, 15, 22, 28, 25],
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#9ca3af', font: { size: 10 } } },
+                        y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#9ca3af', font: { size: 10 } } }
+                    }
+                }
+            });
+
+            startLiveStream();
+        }
+
+        // Live stream real-time updates
+        function startLiveStream() {
+            streamInterval = setInterval(() => {
+                if (!isStreaming) return;
+
+                // Update live timestamp
+                const now = new Date().toLocaleTimeString();
+                document.getElementById('live-timestamp').innerText = `Sist synkronisert: ${now}`;
+
+                // Randomize stat numbers slightly for live feel
+                const randomThroughput = (Math.random() * 5 + 43).toFixed(1) + 'k req/s';
+                const randomLatency = (Math.random() * 0.5 + 2.1).toFixed(1) + ' ms';
+                const randomMlAcc = (Math.random() * 0.4 + 98.5).toFixed(1) + '%';
+
+                document.getElementById('stat-throughput').innerText = randomThroughput;
+                document.getElementById('stat-db-latency').innerText = randomLatency;
+                document.getElementById('stat-ml-acc').innerText = randomMlAcc;
+
+                // Shift timeseries data
+                if (timeseriesChart) {
+                    const timeLabels = timeseriesChart.data.labels;
+                    timeLabels.shift();
+                    timeLabels.push(now);
+
+                    timeseriesChart.data.datasets[0].data.shift();
+                    timeseriesChart.data.datasets[0].data.push(Math.floor(Math.random() * 1000 + 3500));
+
+                    timeseriesChart.data.datasets[1].data.shift();
+                    timeseriesChart.data.datasets[1].data.push(Math.floor(Math.random() * 10 + 88));
+                    timeseriesChart.update('none');
+                }
+
+                // Shift DB IOPS data
+                if (dbIopsChart) {
+                    dbIopsChart.data.datasets[0].data.shift();
+                    dbIopsChart.data.datasets[0].data.push(Math.floor(Math.random() * 10 + 20));
+                    dbIopsChart.update('none');
+                }
+            }, 2000);
+        }
+
+        function toggleLiveStream() {
+            isStreaming = !isStreaming;
+            const icon = document.getElementById('stream-icon');
+            const text = document.getElementById('stream-text');
+            if (isStreaming) {
+                icon.className = "fa-solid fa-pause";
+                text.innerText = "Pause Strøm";
+                showToast("Live Strøm", "Sanntids telemetri er gjenopptatt.");
+            } else {
+                icon.className = "fa-solid fa-play";
+                text.innerText = "Start Strøm";
+                showToast("Live Strøm", "Sanntids telemetri er satt på pause.");
+            }
+        }
+
+        function triggerSyncPulse() {
+            showToast("Synkronisering", "Alle 120 noder synkronisert med Grafana backend.");
+        }
+
+        function updateChartTimeRange(val) {
+            showToast("Tidsintervall", `Oppdatert grafana tidsvindu til siste ${val} minutter.`);
+        }
+
+        /* --- AGNOSTIC QUERY & DB FUNCTIONS --- */
+        function executeAgnosticQuery() {
+            const query = document.getElementById('agnostic-query-input').value;
+            const output = document.getElementById('query-result-output');
+            
+            output.innerText = "Kjører agnostisk spørring på tvers av lagre...\n\n[OK] Parser universell AST...\n[OK] Ruter til PostgreSQL & DuckDB kolonnearkitektur...\n\nResultatsett (10 rader returnert):\n" + JSON.stringify([
+                { id: 1, skill_name: "Deep Neural Networks #1", category: "Machine Learning", confidence_score: 99.4, telemetry_sync: true },
+                { id: 2, skill_name: "Transformer Attention #2", category: "Machine Learning", confidence_score: 99.1, telemetry_sync: true },
+                { id: 3, skill_name: "PostgreSQL Sharding #1", category: "Database & Storage", confidence_score: 98.8, telemetry_sync: true },
+                { id: 4, skill_name: "DuckDB Columnar #2", category: "Database & Storage", confidence_score: 98.2, telemetry_sync: true },
+                { id: 5, skill_name: "PromQL TimeSeries #1", category: "Metrikk", confidence_score: 97.9, telemetry_sync: true }
+            ], null, 2);
+
+            showToast("Agnostisk Spørring", "Spørring fullført med suksess.");
+        }
+
+        function runDbAction(actionType) {
+            if (actionType === 'sync') {
+                showToast("Database Synk", "Full schema-synkronisering utført på tvers av 120 noder.");
+            } else if (actionType === 'vacuum') {
+                showToast("Vacuum & Reindex", "B-Tree indekser er optimalisert og ryddet.");
+            } else if (actionType === 'backup') {
+                showToast("Snapshot Export", "Eksporterte fullstendig JSON/Parquet arkiv.");
+            }
+        }
+
+        /* --- TOAST NOTIFICATION SYSTEM (Replaces alert) --- */
+        function showToast(title, desc) {
+            const toast = document.getElementById('toast-notification');
+            document.getElementById('toast-title').innerText = title;
+            document.getElementById('toast-desc').innerText = desc;
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3500);
+        }
+
+        // Initialize application on load
+        window.onload = function() {
+            renderSkills();
+            initCharts();
+        };
+    </script>
+</body>
+</html>
